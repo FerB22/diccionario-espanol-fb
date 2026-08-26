@@ -4,6 +4,7 @@
 *.pyc
 *.swp
 *.apk
+assets/diccionario.db
 .DS_Store
 .atom/
 .build/

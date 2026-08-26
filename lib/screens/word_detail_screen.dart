@@ -13,6 +13,7 @@ import '../widgets/detail/paronimo_card.dart';
 import '../widgets/detail/senses_section.dart';
 import '../widgets/detail/synonyms_antonyms_section.dart';
 import '../widgets/detail/word_detail_header.dart';
+import 'conjugation_screen.dart';
 import 'search_results_screen.dart';
 
 const Color _azulMarino = Color(0xFF1A2C56);
@@ -36,6 +37,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
   Map<String, dynamic>? _detail;
   bool _loading = true;
   bool _isFavorite = false;
+  bool _hasConjugation = false;
 
   late int _currentWordId;
   late String _currentWord;
@@ -82,17 +84,19 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
     final results = await Future.wait([
       db.getWordDetail(wordId),
       db.isFavorite(wordId),
+      db.hasConjugation(wordId, word),
     ]);
 
     await db.addToHistory(wordId, word);
 
     if (mounted) {
       setState(() {
-        _currentWordId = wordId;
-        _currentWord   = word;
-        _detail        = results[0] as Map<String, dynamic>;
-        _isFavorite    = results[1] as bool;
-        _loading       = false;
+        _currentWordId   = wordId;
+        _currentWord     = word;
+        _detail          = results[0] as Map<String, dynamic>;
+        _isFavorite      = results[1] as bool;
+        _hasConjugation  = results[2] as bool;
+        _loading         = false;
       });
     }
   }
@@ -309,6 +313,18 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
             ipa: ipa,
             currentWord: _currentWord,
             isDark: isDark,
+            hasConjugation: _hasConjugation,
+            onConjugationTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ConjugationScreen(
+                    palabraId: _currentWordId,
+                    verb: _currentWord,
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 14),
           if (etymology != null && etymology.isNotEmpty)

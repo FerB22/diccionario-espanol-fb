@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/search_result.dart';
+import '../models/verb_conjugation.dart';
 
 /// Singleton que gestiona toda la interacción con la base de datos SQLite.
 class DatabaseHelper {
@@ -47,7 +48,7 @@ class DatabaseHelper {
     final File dbFile = File(dbPath);
 
     final prefs = await SharedPreferences.getInstance();
-    const currentDbVersion = 12;
+    const currentDbVersion = 13;
     final savedVersion = prefs.getInt('db_version') ?? 0;
 
     if (savedVersion < currentDbVersion || !await dbFile.exists() || await dbFile.length() < 10000000) {
@@ -56,12 +57,22 @@ class DatabaseHelper {
           await dbFile.delete();
         } catch (_) {}
       }
-      final ByteData data = await rootBundle.load('assets/diccionario.db');
-      final List<int> bytes = data.buffer.asUint8List(
-        data.offsetInBytes,
-        data.lengthInBytes,
-      );
-      await dbFile.writeAsBytes(bytes, flush: true);
+      try {
+        final ByteData data = await rootBundle.load('assets/diccionario.db.gz');
+        final List<int> compressedBytes = data.buffer.asUint8List(
+          data.offsetInBytes,
+          data.lengthInBytes,
+        );
+        final List<int> decompressedBytes = gzip.decode(compressedBytes);
+        await dbFile.writeAsBytes(decompressedBytes, flush: true);
+      } catch (_) {
+        final ByteData data = await rootBundle.load('assets/diccionario.db');
+        final List<int> bytes = data.buffer.asUint8List(
+          data.offsetInBytes,
+          data.lengthInBytes,
+        );
+        await dbFile.writeAsBytes(bytes, flush: true);
+      }
       await prefs.setInt('db_version', currentDbVersion);
     }
 
@@ -218,7 +229,8 @@ class DatabaseHelper {
     return seen.values.toList();
   }
 
-  /// Busca una palabra por lema exacto o normalizado para salto hipertextual.
+  /// Busca una palabra por lema exacto o normalizado para salto hipertextual,
+  /// incluyendo resolución de formas conjugadas y desclitización defensiva en 2 pasos.
   Future<SearchResult?> findWord(String text, {String? currentWord}) async {
     final clean = text.trim();
     if (clean.isEmpty) return null;
@@ -227,7 +239,7 @@ class DatabaseHelper {
     final currentLower = currentWord?.toLowerCase().trim();
 
     final db = await database;
-    // 1. Coincidencia exacta o normalizada
+    // 1. Coincidencia exacta o normalizada en el lema
     final exact = await db.rawQuery(
       '''SELECT id, word, pos, pos_label FROM palabras 
          WHERE word_lower = ? OR word_norm = ? 
@@ -243,7 +255,52 @@ class DatabaseHelper {
       return res;
     }
 
-    // 2. Probar derivaciones (ej. plural a singular, femenino si no existe masculino)
+    // 2. Búsqueda indexada en la tabla de conjugaciones (formas verbales simples)
+    final conjRes = await db.rawQuery(
+      '''SELECT p.id, p.word, p.pos, p.pos_label 
+         FROM conjugations c
+         JOIN palabras p ON c.palabra_id = p.id
+         WHERE c.form_lower = ? OR c.form = ?
+         LIMIT 1''',
+      [cleanLower, clean],
+    );
+    if (conjRes.isNotEmpty) {
+      final res = SearchResult.fromMap(conjRes.first);
+      if (currentLower == null || res.word.toLowerCase() != currentLower) {
+        return res;
+      }
+    }
+
+    // 3. Desmontaje defensivo de clíticos en 2 pasos (ej. lavarse, peinarse, cantándolo)
+    const cliticSuffixes = [
+      'selo', 'sela', 'selos', 'selas',
+      'melo', 'mela', 'melos', 'melas',
+      'telo', 'tela', 'telos', 'telas',
+      'noslo', 'nosla', 'noslos', 'noslas',
+      'se', 'me', 'te', 'le', 'la', 'les', 'las', 'lo', 'los', 'nos', 'os'
+    ];
+
+    for (final suf in cliticSuffixes) {
+      if (cleanLower.endsWith(suf) && cleanLower.length > suf.length + 2) {
+        final baseCand = cleanLower.substring(0, cleanLower.length - suf.length);
+        // Paso 2: Verificar si la raíz base existe como verbo en palabras
+        final vCheck = await db.rawQuery(
+          '''SELECT id, word, pos, pos_label FROM palabras 
+             WHERE (word_lower = ? OR word_norm = ?)
+               AND (pos = 'verb' OR pos_label LIKE '%verbo%')
+             LIMIT 1''',
+          [baseCand, normalize(baseCand)],
+        );
+        if (vCheck.isNotEmpty) {
+          final res = SearchResult.fromMap(vCheck.first);
+          if (currentLower == null || res.word.toLowerCase() != currentLower) {
+            return res;
+          }
+        }
+      }
+    }
+
+    // 4. Probar derivaciones nominales simples (plural a singular, femenino)
     final candidates = <String>[];
     if (cleanLower.endsWith('s') && cleanLower.length > 2) {
       candidates.add(cleanLower.substring(0, cleanLower.length - 1));
@@ -270,7 +327,7 @@ class DatabaseHelper {
       }
     }
 
-    // 3. Coincidencia por prefijo (descartando la palabra actual)
+    // 5. Coincidencia por prefijo (descartando la palabra actual)
     final prefix = await db.rawQuery(
       '''SELECT id, word, pos, pos_label FROM palabras 
          WHERE (word_norm LIKE ? OR word_lower LIKE ?)
@@ -699,6 +756,42 @@ class DatabaseHelper {
       [safeQuery],
     );
     return rows.map(SearchResult.fromMap).toList();
+  }
+
+  // ── Conjugación Verbal (Modelo RAE) ───────────────────────────────────────
+
+  /// Obtiene la conjugación completa de un verbo según el modelo oficial de la RAE.
+  Future<VerbConjugation?> getConjugation(int palabraId, String word) async {
+    final db = await database;
+    final cleanWord = word.trim().toLowerCase();
+
+    final rows = await db.rawQuery(
+      '''SELECT mood, tense, person, number, form, form_lower, variant
+         FROM conjugations
+         WHERE palabra_id = ? OR verb = ? OR form_lower = ?
+         ORDER BY id ASC''',
+      [palabraId, cleanWord, cleanWord],
+    );
+
+    if (rows.isEmpty) return null;
+
+    return VerbConjugation.fromDbRows(
+      palabraId: palabraId,
+      verb: word.trim(),
+      rows: rows,
+    );
+  }
+
+  /// Comprueba rápidamente si una palabra dispone de tabla de conjugación.
+  Future<bool> hasConjugation(int palabraId, String word) async {
+    final db = await database;
+    final cleanWord = word.trim().toLowerCase();
+
+    final rows = await db.rawQuery(
+      'SELECT id FROM conjugations WHERE palabra_id = ? OR verb = ? LIMIT 1',
+      [palabraId, cleanWord],
+    );
+    return rows.isNotEmpty;
   }
 
   // ── Cierre ────────────────────────────────────────────────────────────────

@@ -29,7 +29,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/diccionario.db
+    - assets/diccionario.db.gz
     - assets/images/
 
   fonts:
