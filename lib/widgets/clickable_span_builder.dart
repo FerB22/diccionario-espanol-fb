@@ -29,7 +29,7 @@ class ClickableSpanBuilder {
     String? posText,
     List<String> contextTags = const [],
   }) {
-    final RegExp tokenRegex = RegExp(r'(\s+|[.,;:\-—–¿?¡!()\[\]"«»/]+|[^\s.,;:\-—–¿?¡!()\[\]"«»/]+)');
+    final RegExp tokenRegex = RegExp(r'(\*[^*]+\*|\s+|[.,;:\-—–¿?¡!()\[\]"«»/]+|[^\s*.,;:\-—–¿?¡!()\[\]"«»/]+)');
     final matches = tokenRegex.allMatches(gloss);
 
     final List<InlineSpan> spans = [];
@@ -70,7 +70,10 @@ class ClickableSpanBuilder {
     }
 
     for (final match in matches) {
-      final token = match.group(0) ?? '';
+      final rawToken = match.group(0) ?? '';
+      final bool isItalic = rawToken.length >= 2 && rawToken.startsWith('*') && rawToken.endsWith('*');
+      final token = isItalic ? rawToken.substring(1, rawToken.length - 1) : rawToken;
+
       final bool isWord = RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]').hasMatch(token);
 
       if (isWord) {
@@ -101,6 +104,7 @@ class ClickableSpanBuilder {
             text: token,
             style: TextStyle(
               fontFamily: 'serif',
+              fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
               fontSize: 16,
               color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1E293B),
               height: 1.55,
@@ -114,6 +118,7 @@ class ClickableSpanBuilder {
             text: token,
             style: TextStyle(
               fontFamily: 'serif',
+              fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
               fontSize: 16,
               color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1E293B),
               height: 1.55,
