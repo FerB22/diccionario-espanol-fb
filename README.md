@@ -5,13 +5,13 @@
 [![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org)
 [![License](https://img.shields.io/badge/Licencia-CC%20BY--SA%203.0-lightgrey?style=for-the-badge)](https://creativecommons.org/licenses/by-sa/3.0/)
 
-Una aplicación móvil moderna, elegante y 100% offline del Diccionario de la Lengua Española desarrollada en **Flutter**, con tipografía y diseño editorial clásico inspirado en las ediciones de la RAE, motor de búsqueda SQLite FTS5 ultrarrápido y pronunciación por voz (TTS).
+Una aplicación móvil moderna, elegante y 100 % offline del Diccionario de la Lengua Española desarrollada en **Flutter**, con tipografía y diseño editorial clásico inspirado en las ediciones de la RAE, motor de búsqueda SQLite FTS5 ultrarrápido y pronunciación por voz (TTS).
 
 ---
 
 ## ✨ Características Principales
 
-- **⚡ 100% Offline:** Base de datos SQLite embebida con más de 800.000 entradas, acepciones, sinónimos, antónimos y locuciones sin necesidad de conexión a internet.
+- **⚡ 100 % Offline:** Base de datos SQLite embebida con más de 800.000 entradas, acepciones, sinónimos, antónimos y locuciones sin necesidad de conexión a internet.
 - **🔍 Múltiples Modos de Búsqueda:**
   - **Palabra:** Búsqueda predictiva e incremental instantánea.
   - **Expresiones y Locuciones:** Búsqueda en más de 21.000 frases hechas y giros idiomáticos.
@@ -21,7 +21,7 @@ Una aplicación móvil moderna, elegante y 100% offline del Diccionario de la Le
   - **Aleatoria:** Descubre nuevas palabras al azar con un solo toque.
 - **📚 Navegación Hipertextual Completa:**
   - Toca cualquier palabra dentro de las definiciones, ejemplos o dudas frecuentes para saltar directamente a su significado.
-  - Barra de navegación inferior con historial de navegación interno (estilo navegador con botones Atrás y Adelante).
+  - Barra de navegación inferior con historial de navegación interno (estilo navegador con botones «Atrás» y «Adelante»).
 - **🗣️ Pronunciación y Fonética:**
   - Transcripción fonética internacional (IPA).
   - Pronunciación por voz mediante Text-to-Speech (`flutter_tts`) con animación de audio reactiva.
