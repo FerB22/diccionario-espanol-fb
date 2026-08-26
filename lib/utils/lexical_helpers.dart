@@ -3,6 +3,15 @@ import 'dart:convert';
 /// Abreviaturas estándar de categorías gramaticales estilo RAE.
 String abbreviatePos(String pos) {
   final p = pos.toLowerCase().trim();
+  if (p == 'loc. verb.' || p == 'locución verbal') return 'loc. verb.';
+  if (p == 'loc. adv.' || p == 'locución adverbial') return 'loc. adv.';
+  if (p == 'loc. adj.' || p == 'locución adjetival' || p == 'locución adjetiva') return 'loc. adj.';
+  if (p == 'loc. sust.' || p == 'locución sustantiva') return 'loc. sust.';
+  if (p == 'loc. prep.' || p == 'locución preposicional' || p == 'locución prepositiva') return 'loc. prep.';
+  if (p == 'loc. conj.' || p == 'locución conjuntiva') return 'loc. conj.';
+  if (p == 'loc. interj.' || p == 'locución interjectiva') return 'loc. interj.';
+  if (p == 'loc. pron.' || p == 'locución pronominal') return 'loc. pron.';
+  if (p == 'refrán' || p == 'proverbio') return 'refrán';
   if (p == 'adjetivo' || p == 'adj') return 'adj.';
   if (p == 'sustantivo' || p == 'noun') return 'sust.';
   if (p == 'sustantivo masculino' || p == 'masculine') return 'm.';
@@ -14,7 +23,7 @@ String abbreviatePos(String pos) {
   if (p == 'conjunción' || p == 'conj') return 'conj.';
   if (p == 'interjección' || p == 'interj') return 'interj.';
   if (p == 'locución' || p == 'loc') return 'loc.';
-  return p.isNotEmpty ? '$p.' : '';
+  return p.isNotEmpty ? (p.endsWith('.') ? p : '$p.') : '';
 }
 
 /// Traducciones editoriales de etiquetas de Wikcionario al español estándar.

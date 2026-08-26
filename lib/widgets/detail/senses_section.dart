@@ -171,7 +171,7 @@ class ExpressionsListWidget extends StatelessWidget {
                   Expanded(
                     child: spanBuilder.buildGloss(
                       gloss: s['gloss'] as String? ?? '',
-                      posText: s['pos_label'] as String? ?? '',
+                      posText: abbreviatePos(s['pos_label'] as String? ?? ''),
                       contextTags: [],
                     ),
                   ),
