@@ -65,25 +65,26 @@ class _ConjugationScreenState extends State<ConjugationScreen>
             fontFamily: 'Playfair',
             fontWeight: FontWeight.bold,
             fontSize: 20,
+            color: Colors.white,
           ),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Pronunciar verbo',
-            icon: const Icon(Icons.volume_up_rounded),
-            onPressed: () => TtsService.instance.speak(widget.verb),
-          ),
-        ],
+        iconTheme: const IconThemeData(color: Colors.white),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          labelColor: isDark ? const Color(0xFF93C5FD) : _azulMarino,
-          unselectedLabelColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+          tabAlignment: TabAlignment.start,
+          labelColor: Colors.white,
+          unselectedLabelColor: const Color(0xFFB0C4DE),
           indicatorColor: _dorado,
-          indicatorWeight: 3,
+          indicatorWeight: 3.5,
+          indicatorSize: TabBarIndicatorSize.label,
           labelStyle: const TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 14.5,
+            fontSize: 15,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 15,
           ),
           tabs: const [
             Tab(text: 'No personales'),
@@ -99,6 +100,7 @@ class _ConjugationScreenState extends State<ConjugationScreen>
               ? _buildEmptyState(isDark)
               : TabBarView(
                   controller: _tabController,
+                  physics: const PageScrollPhysics(),
                   children: [
                     _buildNonPersonalTab(isDark),
                     _buildTenseBlocksTab(_conjugation!.indicativeBlocks, isDark, moodTitle: 'Indicativo'),
@@ -144,6 +146,7 @@ class _ConjugationScreenState extends State<ConjugationScreen>
     final rowBg = isDark ? const Color(0xFF0F172A) : Colors.white;
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       children: [
         _buildSectionHeader('FORMAS NO PERSONALES', isDark),
@@ -237,6 +240,7 @@ class _ConjugationScreenState extends State<ConjugationScreen>
     required String moodTitle,
   }) {
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       itemCount: blocks.length,
       itemBuilder: (context, index) {
@@ -385,6 +389,7 @@ class _ConjugationScreenState extends State<ConjugationScreen>
     final rowBaseBg = isDark ? const Color(0xFF131D31) : const Color(0xFFF8FAFC);
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       children: [
         _buildSectionHeader('IMPERATIVO', isDark),
