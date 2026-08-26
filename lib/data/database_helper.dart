@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -48,7 +49,7 @@ class DatabaseHelper {
     final File dbFile = File(dbPath);
 
     final prefs = await SharedPreferences.getInstance();
-    const currentDbVersion = 13;
+    const currentDbVersion = 14;
     final savedVersion = prefs.getInt('db_version') ?? 0;
 
     if (savedVersion < currentDbVersion || !await dbFile.exists() || await dbFile.length() < 10000000) {
@@ -258,11 +259,11 @@ class DatabaseHelper {
     // 2. Búsqueda indexada en la tabla de conjugaciones (formas verbales simples)
     final conjRes = await db.rawQuery(
       '''SELECT p.id, p.word, p.pos, p.pos_label 
-         FROM conjugations c
-         JOIN palabras p ON c.palabra_id = p.id
-         WHERE c.form_lower = ? OR c.form = ?
+         FROM verb_forms vf
+         JOIN palabras p ON vf.palabra_id = p.id
+         WHERE vf.form = ?
          LIMIT 1''',
-      [cleanLower, clean],
+      [cleanLower],
     );
     if (conjRes.isNotEmpty) {
       final res = SearchResult.fromMap(conjRes.first);
@@ -766,20 +767,39 @@ class DatabaseHelper {
     final cleanWord = word.trim().toLowerCase();
 
     final rows = await db.rawQuery(
-      '''SELECT mood, tense, person, number, form, form_lower, variant
+      '''SELECT data
          FROM conjugations
-         WHERE palabra_id = ? OR verb = ? OR form_lower = ?
-         ORDER BY id ASC''',
-      [palabraId, cleanWord, cleanWord],
+         WHERE palabra_id = ? OR verb = ?
+         LIMIT 1''',
+      [palabraId, cleanWord],
     );
 
     if (rows.isEmpty) return null;
+    final dataStr = rows.first['data'] as String?;
+    if (dataStr == null || dataStr.isEmpty) return null;
 
-    return VerbConjugation.fromDbRows(
-      palabraId: palabraId,
-      verb: word.trim(),
-      rows: rows,
-    );
+    try {
+      final rawList = jsonDecode(dataStr) as List;
+      final parsedRows = rawList.map((item) {
+        final list = item as List;
+        return {
+          'mood': list.isNotEmpty ? list[0] : '',
+          'tense': list.length > 1 ? list[1] : '',
+          'person': list.length > 2 ? list[2] : null,
+          'number': list.length > 3 ? list[3] : null,
+          'form': list.length > 4 ? list[4] : '',
+          'variant': list.length > 5 ? list[5] : 'standard',
+        };
+      }).toList();
+
+      return VerbConjugation.fromDbRows(
+        palabraId: palabraId,
+        verb: word.trim(),
+        rows: parsedRows,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Comprueba rápidamente si una palabra dispone de tabla de conjugación.
@@ -788,7 +808,7 @@ class DatabaseHelper {
     final cleanWord = word.trim().toLowerCase();
 
     final rows = await db.rawQuery(
-      'SELECT id FROM conjugations WHERE palabra_id = ? OR verb = ? LIMIT 1',
+      'SELECT palabra_id FROM conjugations WHERE palabra_id = ? OR verb = ? LIMIT 1',
       [palabraId, cleanWord],
     );
     return rows.isNotEmpty;
