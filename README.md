@@ -14,7 +14,7 @@ Una aplicación móvil moderna, elegante y 100 % offline del Diccionario de la L
 - **⚡ 100 % Offline:** Base de datos SQLite embebida con más de 800.000 entradas, acepciones, sinónimos, antónimos y locuciones sin necesidad de conexión a internet.
 - **🔍 Múltiples Modos de Búsqueda:**
   - **Palabra:** Búsqueda predictiva e incremental instantánea.
-  - **Expresiones y Locuciones:** Búsqueda en más de 21.000 frases hechas y giros idiomáticos.
+  - **Expresiones y Locuciones:** Búsqueda en más de 21 000 frases hechas y giros idiomáticos.
   - **Exacta:** Coincidencia estricta de lemas.
   - **Comienza por... / Termina en... / Contiene...**
   - **Anagramas:** Encuentra todas las palabras formadas con las mismas letras.
