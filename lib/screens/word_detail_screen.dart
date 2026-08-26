@@ -302,56 +302,106 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
       registerRecognizer: _registerRecognizer,
     );
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          WordDetailHeader(
-            displayLemma: displayLemma,
-            allPosLabels: allPosLabels,
-            ipa: ipa,
-            currentWord: _currentWord,
-            isDark: isDark,
-            hasConjugation: _hasConjugation,
-            onConjugationTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ConjugationScreen(
-                    palabraId: _currentWordId,
-                    verb: _currentWord,
-                  ),
+    final Set<int> displayedSynonymPids = {};
+    final Set<int> displayedAntonymPids = {};
+
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.only(left: 22, right: 22, top: 24, bottom: 8),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                WordDetailHeader(
+                  displayLemma: displayLemma,
+                  allPosLabels: allPosLabels,
+                  ipa: ipa,
+                  currentWord: _currentWord,
+                  isDark: isDark,
+                  hasConjugation: _hasConjugation,
+                  onConjugationTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ConjugationScreen(
+                          palabraId: _currentWordId,
+                          verb: _currentWord,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
+                if (etymology != null && etymology.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  EtymologyCard(etymology: etymology, isDark: isDark),
+                ],
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
-          if (etymology != null && etymology.isNotEmpty)
-            EtymologyCard(etymology: etymology, isDark: isDark),
-          SensesSection(
-            senses: senses,
-            allPosLabels: allPosLabels,
-            entrySynonyms: entrySynonyms,
-            entryAntonyms: entryAntonyms,
-            expressions: expressions,
-            spanBuilder: spanBuilder,
-            isDark: isDark,
+        ),
+        if (senses.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            sliver: SliverList.builder(
+              itemCount: senses.length,
+              itemBuilder: (context, idx) {
+                final sense = senses[idx];
+                final int palabraId = (sense['palabra_id'] as int?) ?? 0;
+
+                final List<SearchResult> senseSyns = (!displayedSynonymPids.contains(palabraId))
+                    ? (entrySynonyms[palabraId] ?? [])
+                    : [];
+                if (senseSyns.isNotEmpty) displayedSynonymPids.add(palabraId);
+
+                final List<SearchResult> senseAnts = (!displayedAntonymPids.contains(palabraId))
+                    ? (entryAntonyms[palabraId] ?? [])
+                    : [];
+                if (senseAnts.isNotEmpty) displayedAntonymPids.add(palabraId);
+
+                return SenseItemWidget(
+                  idx: idx,
+                  sense: sense,
+                  allPosLabels: allPosLabels,
+                  senseSyns: senseSyns,
+                  senseAnts: senseAnts,
+                  spanBuilder: spanBuilder,
+                  isDark: isDark,
+                );
+              },
+            ),
           ),
-          ParonimoCard(
-            paronimo: paronimo,
-            spanBuilder: spanBuilder,
-            isDark: isDark,
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (expressions.isNotEmpty)
+                  ExpressionsListWidget(
+                    expressions: expressions,
+                    spanBuilder: spanBuilder,
+                    isDark: isDark,
+                  ),
+                ParonimoCard(
+                  paronimo: paronimo,
+                  spanBuilder: spanBuilder,
+                  isDark: isDark,
+                ),
+                SynonymsAntonymsSection(
+                  synonyms: synonyms,
+                  antonyms: antonyms,
+                  onNavigate: _goToWord,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 36),
+              ],
+            ),
           ),
-          SynonymsAntonymsSection(
-            synonyms: synonyms,
-            antonyms: antonyms,
-            onNavigate: _goToWord,
-            isDark: isDark,
-          ),
-          const SizedBox(height: 32),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
