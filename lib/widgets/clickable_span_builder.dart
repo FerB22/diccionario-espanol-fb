@@ -235,7 +235,7 @@ class ClickableSpanBuilder {
     final textColor = isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1F2937);
     final linkColor = isDark ? const Color(0xFFF0A500) : const Color(0xFFB45309);
 
-    final regex = RegExp(r'([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]+|[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]+)');
+    final regex = RegExp(r'(\*[^*]+\*|[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]+|[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ*]+)');
     final matches = regex.allMatches(text);
     final List<InlineSpan> spans = [];
 
@@ -243,18 +243,26 @@ class ClickableSpanBuilder {
       'no', 'confundir', 'con', 'ni', 'del', 'de', 'la', 'el', 'los', 'las',
       'un', 'una', 'unos', 'unas', 'en', 'o', 'y', 'es', 'son', 'se', 'usa',
       'para', 'por', 'que', 'forma', 'verbo', 'sustantivo', 'adjetivo', 'tipo',
-      'fruto', 'cerca', 'pieza', 'hueca', 'persona', 'lugar'
+      'fruto', 'cerca', 'pieza', 'hueca', 'persona', 'lugar', 'voz', 'propuesta',
+      'partir', 'más', 'presente', 'otros', 'términos', 'españoles', 'como',
+      'ha', 'formado'
     };
 
     for (final match in matches) {
-      final token = match.group(0) ?? '';
+      final rawToken = match.group(0) ?? '';
+      final bool isItalic = rawToken.length >= 2 && rawToken.startsWith('*') && rawToken.endsWith('*');
+      final token = isItalic ? rawToken.substring(1, rawToken.length - 1) : rawToken;
+
       final bool isWord = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]+$').hasMatch(token);
 
       if (isWord && !stopWords.contains(token.toLowerCase())) {
         final recognizer = registerRecognizer(
           TapGestureRecognizer()
             ..onTap = () async {
-              final result = await DatabaseHelper.instance.findWord(token, currentWord: currentWord);
+              final cleanWord = token.replaceAll(RegExp(r'[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]'), '');
+              if (cleanWord.isEmpty) return;
+
+              final result = await DatabaseHelper.instance.findWord(cleanWord, currentWord: currentWord);
               if (result != null && context.mounted) {
                 onNavigate(result.id, result.word);
               }
@@ -266,6 +274,7 @@ class ClickableSpanBuilder {
             text: token,
             style: TextStyle(
               fontFamily: 'serif',
+              fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
               fontSize: 14.5,
               fontWeight: FontWeight.bold,
               color: linkColor,
@@ -282,6 +291,7 @@ class ClickableSpanBuilder {
             text: token,
             style: TextStyle(
               fontFamily: 'serif',
+              fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
               fontSize: 14.5,
               color: textColor,
               height: 1.45,
