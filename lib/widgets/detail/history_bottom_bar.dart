@@ -18,6 +18,9 @@ class HistoryBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool canPop = Navigator.canPop(context);
+    if (!canPop) return const SizedBox.shrink();
+
     final String backLabel = historyIndex > 0
         ? historyStack[historyIndex - 1]['word'] as String
         : 'Atrás';

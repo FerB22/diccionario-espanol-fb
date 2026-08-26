@@ -103,30 +103,25 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
 
   void _goToWord(int wordId, String word) {
     if (_currentWordId == wordId) return;
-    if (_historyIndex < _historyStack.length - 1) {
-      _historyStack = _historyStack.sublist(0, _historyIndex + 1);
-    }
-    _historyStack.add({'id': wordId, 'word': word});
-    _historyIndex = _historyStack.length - 1;
-    _loadDataForWord(wordId, word);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WordDetailScreen(
+          wordId: wordId,
+          word: word,
+        ),
+      ),
+    );
   }
 
   void _goBack() {
-    if (_historyIndex > 0) {
-      _historyIndex--;
-      final prev = _historyStack[_historyIndex];
-      _loadDataForWord(prev['id'] as int, prev['word'] as String);
-    } else {
+    if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
   }
 
   void _goForward() {
-    if (_historyIndex < _historyStack.length - 1) {
-      _historyIndex++;
-      final next = _historyStack[_historyIndex];
-      _loadDataForWord(next['id'] as int, next['word'] as String);
-    }
+    // Manejado por la pila de navegación de Flutter
   }
 
   Future<void> _toggleFavorite() async {
