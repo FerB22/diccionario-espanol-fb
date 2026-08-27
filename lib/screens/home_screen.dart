@@ -361,6 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
+      resizeToAvoidBottomInset: false,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       drawer: const AppDrawer(),
       drawerEnableOpenDragGesture: true,
@@ -420,139 +421,160 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: SizedBox.expand(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragUpdate: (details) {
-            if (details.primaryDelta != null && details.primaryDelta! > 8) {
-              _scaffoldKey.currentState?.openDrawer();
-            }
-          },
-          child: LayoutBuilder(
-            builder: (context, constraints) => SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // ── 1. Palabra del día ──────────────────────────────────
-                      WordOfDayCard(
-                        word: _wordOfDay,
-                        loading: _loadingWord,
-                        isDark: isDark,
-                        onSelect: () {
-                          if (_wordOfDay != null) {
-                            _onSelectWord(_wordOfDay!);
-                          }
-                        },
-                      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragUpdate: (details) {
+                if (details.primaryDelta != null && details.primaryDelta! > 8) {
+                  _scaffoldKey.currentState?.openDrawer();
+                }
+              },
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // ── 1. Palabra del día ──────────────────────────────────
+                          WordOfDayCard(
+                            word: _wordOfDay,
+                            loading: _loadingWord,
+                            isDark: isDark,
+                            onSelect: () {
+                              if (_wordOfDay != null) {
+                                _onSelectWord(_wordOfDay!);
+                              }
+                            },
+                          ),
 
-                      const SizedBox(height: 32),
+                          const SizedBox(height: 32),
 
-                      // ── 2. Logotipo editorial central ───────────────────────
-                      Text(
-                        'Diccionario',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'Playfair',
-                          fontSize: 34,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : _azulMarino,
-                          height: 1.1,
-                        ),
-                      ),
-                      Text(
-                        'de la lengua',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'Playfair',
-                          fontSize: 26,
-                          color: isDark ? const Color(0xFFE2E8F0) : _azulMarino,
-                          height: 1.2,
-                        ),
-                      ),
-                      const Text(
-                        'española',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'Playfair',
-                          fontSize: 34,
-                          fontWeight: FontWeight.bold,
-                          color: _dorado,
-                          height: 1.1,
-                        ),
-                      ),
+                          // ── 2. Logotipo editorial central ───────────────────────
+                          Text(
+                            'Diccionario',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Playfair',
+                              fontSize: 34,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : _azulMarino,
+                              height: 1.1,
+                            ),
+                          ),
+                          Text(
+                            'de la lengua',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Playfair',
+                              fontSize: 26,
+                              color: isDark ? const Color(0xFFE2E8F0) : _azulMarino,
+                              height: 1.2,
+                            ),
+                          ),
+                          const Text(
+                            'española',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Playfair',
+                              fontSize: 34,
+                              fontWeight: FontWeight.bold,
+                              color: _dorado,
+                              height: 1.1,
+                            ),
+                          ),
 
-                      const SizedBox(height: 28),
+                          const SizedBox(height: 28),
 
-                      // ── 3. Buscadas recientemente ───────────────────────────
-                      Text(
-                        'BUSCADAS RECIENTEMENTE',
-                        style: TextStyle(
-                          fontFamily: 'sans-serif',
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                          color: isDark ? const Color(0xFFF0A500) : const Color(0xFFB45309),
-                        ),
+                          // ── 3. Buscadas recientemente ───────────────────────────
+                          Text(
+                            'BUSCADAS RECIENTEMENTE',
+                            style: TextStyle(
+                              fontFamily: 'sans-serif',
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                              color: isDark ? const Color(0xFFF0A500) : const Color(0xFFB45309),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          RecentSearchesChips(
+                            recentWords: _recentSearches,
+                            isDark: isDark,
+                            onSelectWord: _onSelectWord,
+                          ),
+
+                          const SizedBox(height: 28),
+
+                          // ── 4. ¿Sabías que...? ──────────────────────────────────
+                          DidYouKnowCard(
+                            factText: _didYouKnowText,
+                            isDark: isDark,
+                          ),
+
+                          // Espacio de resguardo para el botón flotante inferior
+                          const SizedBox(height: 84),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      RecentSearchesChips(
-                        recentWords: _recentSearches,
-                        isDark: isDark,
-                        onSelectWord: _onSelectWord,
-                      ),
-
-                      const SizedBox(height: 28),
-
-                      // ── 4. ¿Sabías que...? ──────────────────────────────────
-                      DidYouKnowCard(
-                        factText: _didYouKnowText,
-                        isDark: isDark,
-                      ),
-
-                      // Espacio de resguardo para el botón flotante inferior
-                      const SizedBox(height: 76),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Container(
-        height: 48,
-        margin: const EdgeInsets.only(bottom: 6),
-        child: ElevatedButton.icon(
-          onPressed: _goToSearch,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isDark ? const Color(0xFF1E293B) : _azulMarino,
-            foregroundColor: Colors.white,
-            elevation: 6,
-            shadowColor: Colors.black.withOpacity(0.35),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: isDark
-                  ? const BorderSide(color: Color(0xFF334155), width: 1.2)
-                  : BorderSide.none,
+
+          // ── 5. Botón flotante inferior fijo y fluido ──────────────────────────
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 20,
+            child: Center(
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDark ? 0.4 : 0.18),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: _goToSearch,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDark ? const Color(0xFF1E293B) : _azulMarino,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      side: isDark
+                          ? const BorderSide(color: Color(0xFF334155), width: 1.2)
+                          : BorderSide.none,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
+                  ),
+                  icon: const Icon(Icons.search_rounded, size: 20, color: _dorado),
+                  label: const Text(
+                    'Buscar',
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
           ),
-          icon: const Icon(Icons.search_rounded, size: 20, color: _dorado),
-          label: const Text(
-            'Buscar',
-            style: TextStyle(
-              fontSize: 15.5,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
+        ],
       ),
     );
   }
