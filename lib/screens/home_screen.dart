@@ -6,8 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database_helper.dart';
 import '../models/search_result.dart';
 import '../widgets/app_drawer.dart';
-import 'favorites_screen.dart';
-import 'history_screen.dart';
+import '../widgets/home/did_you_know_card.dart';
+import '../widgets/home/recent_searches_chips.dart';
+import '../widgets/home/word_of_day_card.dart';
 import 'search_results_screen.dart';
 import 'word_detail_screen.dart';
 
@@ -39,12 +40,39 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchMode = 'comienza';
   String _searchModeLabel = 'COMIENZA POR...';
   SearchResult? _wordOfDay;
+  String _didYouKnowText = '';
+  List<SearchResult> _recentSearches = [];
   bool _loadingWord = true;
 
   @override
   void initState() {
     super.initState();
     _loadWordOfDay();
+    _loadRecentSearches();
+  }
+
+  Future<void> _loadRecentSearches() async {
+    try {
+      final history = await DatabaseHelper().getHistory();
+      if (history.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _recentSearches = history.take(5).toList();
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _recentSearches = const [
+              SearchResult(id: 0, word: 'sombra', pos: 'noun', posLabel: 'sustantivo'),
+              SearchResult(id: 0, word: 'efímero', pos: 'adj', posLabel: 'adjetivo'),
+              SearchResult(id: 0, word: 'quimera', pos: 'noun', posLabel: 'sustantivo'),
+              SearchResult(id: 0, word: 'vestigio', pos: 'noun', posLabel: 'sustantivo'),
+            ];
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadWordOfDay() async {
@@ -57,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final savedWord = prefs.getString('word_of_day_word');
       final savedPos = prefs.getString('word_of_day_pos') ?? '';
       final savedPosLabel = prefs.getString('word_of_day_pos_label') ?? '';
+      final savedFact = prefs.getString('word_of_day_fact');
 
       if (savedDate == todayKey && savedId != null && savedWord != null) {
         if (mounted) {
@@ -67,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
               pos: savedPos,
               posLabel: savedPosLabel,
             );
+            _didYouKnowText = savedFact ?? _generateFact(savedWord, null, null);
             _loadingWord = false;
           });
         }
@@ -75,18 +105,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final word = await DatabaseHelper().getRandomWord();
       if (word != null) {
+        final detail = await DatabaseHelper().getWordDetail(word.id);
+        final etym = detail['etymology'] as String?;
+        final senses = detail['senses'] as List?;
+        final firstGloss = (senses != null && senses.isNotEmpty)
+            ? (senses[0]['gloss'] as String?)
+            : null;
+        final fact = _generateFact(word.word, etym, firstGloss);
+
         await prefs.setString('word_of_day_date', todayKey);
         await prefs.setInt('word_of_day_id', word.id);
         await prefs.setString('word_of_day_word', word.word);
         await prefs.setString('word_of_day_pos', word.pos);
         await prefs.setString('word_of_day_pos_label', word.posLabel);
-      }
+        await prefs.setString('word_of_day_fact', fact);
 
-      if (mounted) {
-        setState(() {
-          _wordOfDay = word;
-          _loadingWord = false;
-        });
+        if (mounted) {
+          setState(() {
+            _wordOfDay = word;
+            _didYouKnowText = fact;
+            _loadingWord = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _loadingWord = false;
+          });
+        }
       }
     } catch (_) {
       if (mounted) {
@@ -95,6 +141,16 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     }
+  }
+
+  String _generateFact(String word, String? etymology, String? firstGloss) {
+    if (etymology != null && etymology.trim().isNotEmpty) {
+      return '«$word» $etymology';
+    }
+    if (firstGloss != null && firstGloss.trim().isNotEmpty) {
+      return '«$word» se define como: $firstGloss';
+    }
+    return 'El español cuenta con más de 93.000 palabras registradas en el diccionario académico, enriquecidas por raíces del latín, griego, árabe y lenguas originarias.';
   }
 
   void _showSearchModeSheet() {
@@ -169,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (label == 'ALEATORIA') {
                           final word = await DatabaseHelper().getRandomWord();
                           if (word != null && mounted) {
-                            Navigator.push(
+                            await Navigator.push(
                               context,
                               PageRouteBuilder(
                                 transitionDuration: const Duration(milliseconds: 240),
@@ -197,6 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 },
                               ),
                             );
+                            _loadRecentSearches();
                           }
                           return;
                         }
@@ -216,8 +273,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _goToSearch() {
-    Navigator.push(
+  void _goToSearch() async {
+    await Navigator.push(
       context,
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 150),
@@ -232,12 +289,74 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
+    _loadRecentSearches();
+  }
+
+  void _onSelectWord(SearchResult item) async {
+    if (item.id > 0) {
+      await Navigator.push(
+        context,
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 240),
+          reverseTransitionDuration: const Duration(milliseconds: 200),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              WordDetailScreen(wordId: item.id, word: item.word),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curve = CurvedAnimation(
+              parent: animation,
+              curve: const Cubic(0.23, 1.0, 0.32, 1.0),
+              reverseCurve: Curves.easeInCubic,
+            );
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.06, 0.0),
+                end: Offset.zero,
+              ).animate(curve),
+              child: FadeTransition(
+                opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                child: child,
+              ),
+            );
+          },
+        ),
+      );
+    } else {
+      final res = await DatabaseHelper().searchWords(item.word, mode: 'exacta', limit: 1);
+      if (res.isNotEmpty && mounted) {
+        await Navigator.push(
+          context,
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 240),
+            reverseTransitionDuration: const Duration(milliseconds: 200),
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                WordDetailScreen(wordId: res[0].id, word: res[0].word),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              final curve = CurvedAnimation(
+                parent: animation,
+                curve: const Cubic(0.23, 1.0, 0.32, 1.0),
+                reverseCurve: Curves.easeInCubic,
+              );
+              return SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.06, 0.0),
+                  end: Offset.zero,
+                ).animate(curve),
+                child: FadeTransition(
+                  opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  child: child,
+                ),
+              );
+            },
+          ),
+        );
+      }
+    }
+    _loadRecentSearches();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
@@ -315,258 +434,124 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // ── Palabra del día ──────────────────────────────────────────────
-            Card(
-              elevation: isDark ? 1 : 3,
-              color: isDark ? const Color(0xFF1E293B) : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.auto_awesome, color: _dorado, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Palabra del día',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.grey[400] : Colors.grey[600],
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    if (_loadingWord)
-                      CircularProgressIndicator(color: isDark ? _dorado : _azulMarino)
-                    else if (_wordOfDay != null) ...[
+                    children: [
+                      // ── 1. Palabra del día ──────────────────────────────────
+                      WordOfDayCard(
+                        word: _wordOfDay,
+                        loading: _loadingWord,
+                        isDark: isDark,
+                        onSelect: () {
+                          if (_wordOfDay != null) {
+                            _onSelectWord(_wordOfDay!);
+                          }
+                        },
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // ── 2. Logotipo editorial central ───────────────────────
                       Text(
-                        _wordOfDay!.word,
+                        'Diccionario',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontFamily: 'Playfair',
-                          fontSize: 32,
+                          fontSize: 34,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : _azulMarino,
+                          height: 1.1,
                         ),
                       ),
-                      if (_wordOfDay!.posLabel.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Chip(
-                          label: Text(
-                            _wordOfDay!.posLabel,
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: isDark ? const Color(0xFF93C5FD) : _azulMarino,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB),
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                      Text(
+                        'de la lengua',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Playfair',
+                          fontSize: 26,
+                          color: isDark ? const Color(0xFFE2E8F0) : _azulMarino,
+                          height: 1.2,
                         ),
-                      ],
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark ? const Color(0xFFF0A500) : _azulMarino,
-                          foregroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        icon: const Icon(Icons.book_outlined, size: 18),
-                        label: Text(
-                          'Ver definición',
-                          style: TextStyle(
-                            fontWeight: isDark ? FontWeight.bold : FontWeight.w600,
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            PageRouteBuilder(
-                              transitionDuration: const Duration(milliseconds: 240),
-                              reverseTransitionDuration: const Duration(milliseconds: 200),
-                              pageBuilder: (context, animation, secondaryAnimation) =>
-                                  WordDetailScreen(
-                                wordId: _wordOfDay!.id,
-                                word: _wordOfDay!.word,
-                              ),
-                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                final curve = CurvedAnimation(
-                                  parent: animation,
-                                  curve: const Cubic(0.23, 1.0, 0.32, 1.0),
-                                  reverseCurve: Curves.easeInCubic,
-                                );
-                                final offsetAnimation = Tween<Offset>(
-                                  begin: const Offset(0.06, 0.0),
-                                  end: Offset.zero,
-                                ).animate(curve);
-
-                                return SlideTransition(
-                                  position: offsetAnimation,
-                                  child: FadeTransition(
-                                    opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                                    child: child,
-                                  ),
-                                );
-                              },
-                            ),
-                          );
-                        },
                       ),
-                    ] else
-                      const Text('No disponible'),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 48),
-
-            // ── Logo textual ─────────────────────────────────────────────────
-            Text(
-              'Diccionario',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Playfair',
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : _azulMarino,
-                height: 1.1,
-              ),
-            ),
-            Text(
-              'de la lengua',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Playfair',
-                fontSize: 28,
-                color: isDark ? const Color(0xFFE2E8F0) : _azulMarino,
-                height: 1.2,
-              ),
-            ),
-            const Text(
-              'española',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Playfair',
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-                color: _dorado,
-                height: 1.1,
-              ),
-            ),
-
-            const SizedBox(height: 40),
-
-            // ── Accesos rápidos ──────────────────────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _QuickBtn(
-                  icon: Icons.star_rounded,
-                  label: 'Favoritos',
-                  color: _dorado,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const FavoritesScreen()),
-                  ),
-                ),
-                _QuickBtn(
-                  icon: Icons.history_rounded,
-                  label: 'Historial',
-                  color: isDark ? const Color(0xFFF87171) : const Color(0xFF8B1A1A),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HistoryScreen()),
-                  ),
-                ),
-                _QuickBtn(
-                  icon: Icons.shuffle_rounded,
-                  label: 'Aleatoria',
-                  color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF4B5563),
-                  onTap: () async {
-                    final word = await DatabaseHelper().getRandomWord();
-                    if (word != null && mounted) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => WordDetailScreen(
-                            wordId: word.id,
-                            word: word.word,
-                          ),
+                      const Text(
+                        'española',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Playfair',
+                          fontSize: 34,
+                          fontWeight: FontWeight.bold,
+                          color: _dorado,
+                          height: 1.1,
                         ),
-                      );
-                    }
-                  },
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      // ── 3. Buscadas recientemente ───────────────────────────
+                      Text(
+                        'BUSCADAS RECIENTEMENTE',
+                        style: TextStyle(
+                          fontFamily: 'sans-serif',
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                          color: isDark ? const Color(0xFFF0A500) : const Color(0xFFB45309),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      RecentSearchesChips(
+                        recentWords: _recentSearches,
+                        isDark: isDark,
+                        onSelectWord: _onSelectWord,
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      // ── 4. ¿Sabías que...? ──────────────────────────────────
+                      DidYouKnowCard(
+                        factText: _didYouKnowText,
+                        isDark: isDark,
+                      ),
+
+                      // Espacio de resguardo para el botón flotante inferior
+                      const SizedBox(height: 76),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
-    ),
-  ),
-),
-),
-),
-);
-  }
-}
-
-// ── Widget auxiliar ──────────────────────────────────────────────────────────
-
-class _QuickBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickBtn({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: 90,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: color.withOpacity(isDark ? 0.15 : 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(isDark ? 0.4 : 0.3)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Container(
+        height: 48,
+        margin: const EdgeInsets.only(bottom: 6),
+        child: ElevatedButton.icon(
+          onPressed: _goToSearch,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isDark ? const Color(0xFF1E293B) : _azulMarino,
+            foregroundColor: Colors.white,
+            elevation: 6,
+            shadowColor: Colors.black.withOpacity(0.35),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: isDark
+                  ? const BorderSide(color: Color(0xFF334155), width: 1.2)
+                  : BorderSide.none,
             ),
-          ],
+            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
+          ),
+          icon: const Icon(Icons.search_rounded, size: 20, color: _dorado),
+          label: const Text(
+            'Buscar',
+            style: TextStyle(
+              fontSize: 15.5,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
         ),
       ),
     );
