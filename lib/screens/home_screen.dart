@@ -321,7 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } else {
-      final res = await DatabaseHelper().searchWords(item.word, mode: 'exacta', limit: 1);
+      final res = await DatabaseHelper().searchWords(item.word, 'exacta', limit: 1);
       if (res.isNotEmpty && mounted) {
         await Navigator.push(
           context,
