@@ -518,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
 
                           // Espacio de resguardo para el botón flotante inferior
-                          const SizedBox(height: 84),
+                          SizedBox(height: MediaQuery.of(context).padding.bottom + 96),
                         ],
                       ),
                     ),
@@ -532,7 +532,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 20,
+            bottom: MediaQuery.of(context).padding.bottom + 28,
             child: Center(
               child: Container(
                 height: 48,
