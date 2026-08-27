@@ -48,6 +48,7 @@ class WordDetailHeader extends StatelessWidget {
           spacing: 8,
           runSpacing: 6,
           children: [
+            // 1. Categoría gramatical
             if (allPosLabels.isNotEmpty)
               Text(
                 allPosLabels.join(' · '),
@@ -58,51 +59,8 @@ class WordDetailHeader extends StatelessWidget {
                   color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF64748B),
                 ),
               ),
-            if (hasConjugation) ...[
-              if (allPosLabels.isNotEmpty)
-                Text(
-                  '·',
-                  style: TextStyle(
-                    color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                    fontSize: 16,
-                  ),
-                ),
-              InkWell(
-                onTap: onConjugationTap,
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFFF0A500).withValues(alpha: 0.5) : const Color(0xFFF0A500),
-                      width: 1.2,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.auto_stories_rounded,
-                        size: 15,
-                        color: isDark ? const Color(0xFFF0A500) : const Color(0xFFB45309),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        'Conjugación',
-                        style: TextStyle(
-                          fontFamily: 'serif',
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? const Color(0xFFF0A500) : const Color(0xFF92400E),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+
+            // 2. Fonética IPA y Pronunciación
             if (ipa != null && ipa!.isNotEmpty) ...[
               if (allPosLabels.isNotEmpty)
                 Text(
@@ -156,6 +114,14 @@ class WordDetailHeader extends StatelessWidget {
               ),
             ] else ...[
               // Si no tiene transcripción IPA, botón sutil de pronunciación
+              if (allPosLabels.isNotEmpty)
+                Text(
+                  '·',
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                    fontSize: 16,
+                  ),
+                ),
               ValueListenableBuilder<bool>(
                 valueListenable: TtsService.instance.isSpeakingNotifier,
                 builder: (context, isSpeaking, _) {
@@ -196,6 +162,53 @@ class WordDetailHeader extends StatelessWidget {
                     ),
                   );
                 },
+              ),
+            ],
+
+            // 3. Botón de Conjugación (a la derecha de la clasificación y pronunciación)
+            if (hasConjugation) ...[
+              if (allPosLabels.isNotEmpty || (ipa != null && ipa!.isNotEmpty))
+                Text(
+                  '·',
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                    fontSize: 16,
+                  ),
+                ),
+              InkWell(
+                onTap: onConjugationTap,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFFF0A500).withValues(alpha: 0.5) : const Color(0xFFF0A500),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.auto_stories_rounded,
+                        size: 15,
+                        color: isDark ? const Color(0xFFF0A500) : const Color(0xFFB45309),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Conjugación',
+                        style: TextStyle(
+                          fontFamily: 'serif',
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? const Color(0xFFF0A500) : const Color(0xFF92400E),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ],
