@@ -49,7 +49,7 @@ class DatabaseHelper {
     final File dbFile = File(dbPath);
 
     final prefs = await SharedPreferences.getInstance();
-    const currentDbVersion = 22;
+    const currentDbVersion = 23;
     final savedVersion = prefs.getInt('db_version') ?? 0;
 
     if (savedVersion < currentDbVersion || !await dbFile.exists() || await dbFile.length() < 10000000) {
